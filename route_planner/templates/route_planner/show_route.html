@@ -1,0 +1,42 @@
+<!-- templates/route_planner/show_route.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Route</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+    <h1>Route and Distance</h1>
+    <div id="map" style="width: 600px; height: 400px;"></div>
+    <p>Distance: {{ distance }} km</p>
+
+    <script>
+        // Dynamic data for map coordinates.
+        var start_coords = [{{ start_coords.lat }}, {{ start_coords.lon }}];
+        var end_coords = [{{ end_coords.lat }}, {{ end_coords.lon }}];
+
+        var map = L.map('map').setView(start_coords, 13);  // Set initial view start point.
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Start and End markers.
+        var start_marker = L.marker(start_coords).addTo(map);
+        var end_marker = L.marker(end_coords).addTo(map);
+
+        // draw route on map.
+        var route_coords = {{ route.features.0.geometry.coordinates|safe }};
+        var latlngs = route_coords.map(function(coord) {
+            return [coord[1], coord[0]];
+        });
+
+        var polyline = L.polyline(latlngs, {color: 'blue'}).addTo(map);
+        map.fitBounds(polyline.getBounds());
+    </script>
+
+</body>
+</html>
