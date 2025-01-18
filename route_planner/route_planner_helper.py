@@ -1,3 +1,4 @@
+env_variables = '5b3ce3597851110001cf6248d88442c89bd24f5dab0640dc81b5ce4d'
 import openrouteservice
 from route_planner.models import Truckstop
 from math import radians, sin, cos, sqrt, atan2
@@ -6,9 +7,10 @@ import numpy as np
 import haversine as hs
 from haversine import Unit
 
-MAX_RANGE = 10 # maximum driveable range of 500 miles
-FUEL_EFFICIENCY = 1 # assuming 10 miles per gallon
-SEARCH_RADIUS = 5 # Can be adjusted according to needs
+
+MAX_RANGE = 500 # maximum driveable range of 500 miles
+FUEL_EFFICIENCY = 10 # assuming 10 miles per gallon
+SEARCH_RADIUS = 15
 
 def get_route(start_coords, end_coords):
     """
@@ -19,7 +21,7 @@ def get_route(start_coords, end_coords):
     Returns:
         dict: The route and other related details.
     """
-    client = openrouteservice.Client(key='5b3ce3597851110001cf6248d88442c89bd24f5dab0640dc81b5ce4d')
+    client = openrouteservice.Client(key=env_variables)
     routes = client.directions(
         coordinates=[start_coords, end_coords],
         profile='driving-car',
@@ -28,7 +30,7 @@ def get_route(start_coords, end_coords):
 
     return routes
 
-def get_distance(start_coords, end_coords):
+def get_distance(route):
     """
     Get the distance between two points using OpenRouteService.
     Args:
@@ -37,7 +39,7 @@ def get_distance(start_coords, end_coords):
     Returns:
         float: The distance in kilometers.
     """
-    route = get_route(start_coords, end_coords)
+
     total_distance_meters = route["features"][0]["properties"]["summary"]["distance"]
     total_distance_miles = total_distance_meters / 1609.34
     return total_distance_miles
@@ -57,6 +59,7 @@ def haversine(coord1, coord2):
 
 def get_nearby_truckstops():
     """Fetch all truck stops and build a KDTree for fast lookup."""
+
     truck_stops = list(Truckstop.objects.all())
     stop_coords = np.array([(ts.longitude, ts.latitude) for ts in truck_stops])
 
@@ -91,6 +94,7 @@ def optimize_segments(route):
     remaining_range = MAX_RANGE
     fuel_stops = []
     extra_fuelstop_travel_distance = 0
+    total_fuel_cost = 0
 
     for next_pos in reduced_route_coords[1:]:
         distance_to_next_coordinate = haversine(current_pos, next_pos)
@@ -102,12 +106,13 @@ def optimize_segments(route):
 
             distance_to_nearest_truckstop, index = tree.query(next_pos)
             nearest_stop = truck_stops[index]
-            extra_fuelstop_travel_distance += distance_to_nearest_truckstop
+            nearest_stop_geo = [nearest_stop.latitude, nearest_stop.longitude]
+            extra_fuelstop_travel_distance += haversine(current_pos, nearest_stop_geo)
 
             fuel_needed = min((MAX_RANGE - remaining_range) / FUEL_EFFICIENCY, MAX_RANGE/FUEL_EFFICIENCY)
 
             total_cost = fuel_needed * nearest_stop.retail_price
-
+            total_fuel_cost += total_cost
             fuel_stops.append({
                 "name": nearest_stop.name,
                 "location": [nearest_stop.latitude, nearest_stop.longitude],
@@ -119,9 +124,10 @@ def optimize_segments(route):
             remaining_range = MAX_RANGE
 
         current_pos = next_pos
+    extra_fuelstop_travel_distance = extra_fuelstop_travel_distance/1609
     print("extra_fuelstop_travel_distance: ", extra_fuelstop_travel_distance)
     print("Reduced Route Distance:", total_distance_travelled)
-    return fuel_stops, extra_fuelstop_travel_distance
+    return fuel_stops, extra_fuelstop_travel_distance, total_fuel_cost
 
 
 

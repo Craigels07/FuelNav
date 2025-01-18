@@ -22,9 +22,9 @@ class RoutePlannerView(APIView):
             end_coords = (float(end_coords_lon), float(end_coords_lat))
 
         route = get_route(start_coords, end_coords) # should be lat, long but switched for it to work.
-        total_distance_miles = get_distance(start_coords, end_coords)
+        total_distance_miles = get_distance(route)
 
-        fuelStops, extra_fuelstop_travel_distance= optimize_segments(route)
+        fuelStops, extra_fuelstop_travel_distance, total_fuel_cost = optimize_segments(route)
         total_distance_with_fuel_stops = extra_fuelstop_travel_distance + total_distance_miles
         print(fuelStops)
 
@@ -37,33 +37,7 @@ class RoutePlannerView(APIView):
             'start_coords': {'lat': start_coords_lat, 'lon': start_coords_lon},
             'end_coords': {'lat': end_coords_lat, 'lon': end_coords_lon},
             'fuelStops': fuelStops,
+            'total_fuel_cost': total_fuel_cost
         }
         return render(request, 'route_planner/show_route.html', context)
 
-
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-
-        if serializer.is_valid():
-            start_coords_lon = serializer.validated_data['start_coords_lon']
-            start_coords_lat = serializer.validated_data['start_coords_lat']
-            end_coords_lon = serializer.validated_data['end_coords_lon']
-            end_coords_lat = serializer.validated_data['end_coords_lat']
-
-            start_coords = (start_coords_lon, start_coords_lat)
-            end_coords = (end_coords_lon, end_coords_lat)
-
-            route = get_route(start_coords, end_coords)
-            distance = get_distance(start_coords, end_coords)
-            # fuel_stops = calculate_fuel_cost(route, fuel_prices)
-
-            context = {
-                        'route': route,
-                        'distance': distance,
-                        'start_coords': {'lat': start_coords_lat, 'lon': start_coords_lon},
-                        'end_coords': {'lat': end_coords_lat, 'lon': end_coords_lon},
-                    }
-
-            return render(request, 'route_planner/show_route.html', context)
-
-        return Response(serializer.errors, status=400)
