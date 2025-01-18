@@ -1,3 +1,7 @@
 Django==3.2.23
 openrouteservice
 djangorestframework==3.12.4
+geopy
+scipy
+numpy
+haversine

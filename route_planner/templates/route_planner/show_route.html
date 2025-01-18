@@ -11,10 +11,11 @@
 <body>
     <h1>Route and Distance</h1>
     <div id="map" style="width: 600px; height: 400px;"></div>
-    <p>Distance: {{ distance }} km</p>
+    <p>Distance: {{ distance }} miles</p>
+    <p>Total Distance with Fuel Stops: {{ total_distance_with_fuel_stops }} miles</p>
 
     <script>
-        // Dynamic data for map coordinates.
+
         var start_coords = [{{ start_coords.lat }}, {{ start_coords.lon }}];
         var end_coords = [{{ end_coords.lat }}, {{ end_coords.lon }}];
 
@@ -24,11 +25,11 @@
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Start and End markers.
+
         var start_marker = L.marker(start_coords).addTo(map);
         var end_marker = L.marker(end_coords).addTo(map);
 
-        // draw route on map.
+
         var route_coords = {{ route.features.0.geometry.coordinates|safe }};
         var latlngs = route_coords.map(function(coord) {
             return [coord[1], coord[0]];
@@ -36,6 +37,21 @@
 
         var polyline = L.polyline(latlngs, {color: 'blue'}).addTo(map);
         map.fitBounds(polyline.getBounds());
+
+        var fuelStops = {{ fuelStops|safe }};
+
+        fuelStops.forEach(function(stop) {
+            var markerColor = 'green';
+
+            var marker = L.marker([stop.location[0], stop.location[1]]).addTo(map);
+            marker.bindPopup(
+                `<b>${stop.name}</b><br>
+                Price: $${stop.price} per gallon<br>
+                Fuel Needed: ${stop.fuel_needed.toFixed(2)} gallons<br>
+                Total Cost: $${stop.total_cost.toFixed(2)}`
+            );
+        });
+
     </script>
 
 </body>
